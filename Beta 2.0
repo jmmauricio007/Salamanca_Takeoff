@@ -1,0 +1,135 @@
+from decimal import Decimal, ROUND_HALF_UP
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+# Helper functions
+def calcular_volumen(ancho, largo, alto):
+    return Decimal(ancho * largo * alto).quantize(Decimal('0.000'))
+
+def calcular_precio_por_pieza(precio_mil, volumen):
+    return (Decimal(precio_mil) * volumen / Decimal(1000)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+
+def calcular_precio_mil(precio_pieza, volumen):
+    return (Decimal(precio_pieza) * Decimal(1000) / volumen).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+
+def calcular_sacos_requeridos(volumen, tipo='premix', peso=30):
+    coberturas = {
+        (True, 25): Decimal('0.5'),
+        (True, 30): Decimal('0.6'),
+        (False, 30): Decimal('0.5'),
+        (False, 40): Decimal('0.75')
+    }
+    return (volumen / coberturas[(tipo == 'premix', peso)]).quantize(Decimal('0.0'), rounding=ROUND_HALF_UP)
+
+# GUI Application
+class ConvertidorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Aplicación Salamanca Takeoff - Español")
+        self.notebook = ttk.Notebook(root)
+        self.notebook.pack(padx=10, pady=10, expand=True, fill='both')
+
+        self.crear_tab_precio()
+        self.crear_tab_cemento()
+
+    def crear_tab_precio(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Convertidor de Precios")
+
+        tk.Label(frame, text="Paso 1: Dimensiones (pulgadas)").grid(row=0, column=0, columnspan=6, sticky="w")
+
+        tk.Label(frame, text="Ancho:").grid(row=1, column=0)
+        self.ancho_var = tk.DoubleVar(value=1)
+        tk.Entry(frame, textvariable=self.ancho_var, width=5).grid(row=1, column=1)
+
+        tk.Label(frame, text="Largo:").grid(row=1, column=2)
+        self.largo_var = tk.DoubleVar(value=1)
+        tk.Entry(frame, textvariable=self.largo_var, width=5).grid(row=1, column=3)
+
+        tk.Label(frame, text="Alto:").grid(row=1, column=4)
+        self.alto_var = tk.DoubleVar(value=1)
+        tk.Entry(frame, textvariable=self.alto_var, width=5).grid(row=1, column=5)
+
+        tk.Label(frame, text="Paso 2: Ingresar Precio").grid(row=2, column=0, columnspan=6, sticky="w")
+
+        self.precio_tipo = tk.StringVar(value="mil")
+        tk.Radiobutton(frame, text="$ por Mil > Pieza", variable=self.precio_tipo, value="mil").grid(row=3, column=0, columnspan=2, sticky="w")
+        tk.Radiobutton(frame, text="$ por Pieza > Mil", variable=self.precio_tipo, value="pieza").grid(row=3, column=2, columnspan=2, sticky="w")
+
+        tk.Label(frame, text="Precio:").grid(row=3, column=4)
+        self.precio_var = tk.StringVar(value="0.00")
+        tk.Entry(frame, textvariable=self.precio_var, width=10).grid(row=3, column=5)
+
+        tk.Button(frame, text="Calcular", command=self.calcular_precio).grid(row=4, column=0, columnspan=6, pady=10)
+        self.resultado_label = tk.Label(frame, text="Resultado: ")
+        self.resultado_label.grid(row=5, column=0, columnspan=6, sticky="w")
+
+    def calcular_precio(self):
+        try:
+            ancho = Decimal(self.ancho_var.get())
+            largo = Decimal(self.largo_var.get())
+            alto = Decimal(self.alto_var.get())
+            volumen = calcular_volumen(ancho, largo, alto)
+            precio = Decimal(self.precio_var.get())
+
+            if self.precio_tipo.get() == "mil":
+                precio_pieza = calcular_precio_por_pieza(precio, volumen)
+                resultado_texto = f"Precio por pieza = ${precio_pieza}  | Volumen: {volumen} po³"
+            else:
+                precio_mil = calcular_precio_mil(precio, volumen)
+                resultado_texto = f"Precio por mil = ${precio_mil}  | Volumen: {volumen} po³"
+
+            self.resultado_label.config(text="Resultado: " + resultado_texto)
+        except Exception as e:
+            messagebox.showerror("Error", f"Error en los cálculos: {str(e)}")
+
+    def crear_tab_cemento(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Calculadora de Cemento")
+
+        tk.Label(frame, text="Dimensiones (pulgadas)").grid(row=0, column=0, columnspan=4, sticky="w")
+
+        tk.Label(frame, text="Largo:").grid(row=1, column=0)
+        self.largo_cem = tk.DoubleVar(value=48)
+        tk.Entry(frame, textvariable=self.largo_cem, width=7).grid(row=1, column=1)
+
+        tk.Label(frame, text="Ancho:").grid(row=1, column=2)
+        self.ancho_cem = tk.DoubleVar(value=48)
+        tk.Entry(frame, textvariable=self.ancho_cem, width=7).grid(row=1, column=3)
+
+        tk.Label(frame, text="Espesor:").grid(row=2, column=0)
+        self.espesor_cem = tk.DoubleVar(value=4)
+        tk.Entry(frame, textvariable=self.espesor_cem, width=7).grid(row=2, column=1)
+
+        tk.Label(frame, text="Tipo de mezcla:").grid(row=3, column=0, sticky="w")
+        self.tipo_cem = tk.StringVar(value="premix")
+        tk.Radiobutton(frame, text="Premezclado", variable=self.tipo_cem, value="premix").grid(row=4, column=0, sticky="w")
+        tk.Radiobutton(frame, text="No mezclado", variable=self.tipo_cem, value="nonmix").grid(row=4, column=1, sticky="w")
+
+        tk.Label(frame, text="Peso del saco:").grid(row=5, column=0, sticky="w")
+        self.peso_cem = tk.IntVar(value=30)
+        tk.OptionMenu(frame, self.peso_cem, 25, 30, 40).grid(row=5, column=1)
+
+        tk.Button(frame, text="Calcular", command=self.calcular_cemento).grid(row=6, column=0, columnspan=2, pady=10)
+        self.resultado_cem = tk.Label(frame, text="Resultado:")
+        self.resultado_cem.grid(row=7, column=0, columnspan=4, sticky="w")
+
+    def calcular_cemento(self):
+        try:
+            largo = Decimal(self.largo_cem.get())
+            ancho = Decimal(self.ancho_cem.get())
+            espesor = Decimal(self.espesor_cem.get())
+            volumen = calcular_volumen(largo, ancho, espesor) / Decimal('1728')  # Pulgadas cúbicas a pies cúbicos
+
+            tipo = self.tipo_cem.get()
+            peso = self.peso_cem.get()
+
+            sacos = calcular_sacos_requeridos(volumen, tipo=tipo, peso=peso)
+            self.resultado_cem.config(text=f"Se requieren aproximadamente {sacos} sacos de {peso} Kg.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error en los cálculos: {str(e)}")
+
+
+root = tk.Tk()
+app = ConvertidorApp(root)
+root.mainloop()
