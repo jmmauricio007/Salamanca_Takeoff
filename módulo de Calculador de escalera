@@ -1,1 +1,471 @@
 
+"""
+Módulo: Calculador de escalera
+Empresa: Salamanca Software
+
+Requisitos:
+    Python 3.10 o superior
+
+Ejecución:
+    python calculador_escalera.py
+"""
+
+import math
+import tkinter as tk
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from tkinter import messagebox, ttk
+
+
+class CalculadorEscalera(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.title("Calculador de escaleras - Salamanca Software")
+        self.geometry("1100x680")
+        self.minsize(1000, 620)
+
+        self.entradas: dict[str, ttk.Entry] = {}
+        self.resultados: dict[str, tk.StringVar] = {}
+
+        self.crear_interfaz()
+
+    def crear_interfaz(self) -> None:
+        contenedor = ttk.Frame(self, padding=20)
+        contenedor.pack(fill="both", expand=True)
+
+        panel_izquierdo = ttk.LabelFrame(
+            contenedor,
+            text="Medidas de la escalera",
+            padding=20
+        )
+        panel_izquierdo.pack(side="left", fill="y", padx=(0, 15))
+
+        panel_derecho = ttk.LabelFrame(
+            contenedor,
+            text="Resultados del cálculo",
+            padding=20
+        )
+        panel_derecho.pack(side="left", fill="both", expand=True)
+
+        campos = [
+            (
+                "abertura",
+                "(A) Longitud de la abertura",
+                "120"
+            ),
+            (
+                "horizontal",
+                "(B) Longitud horizontal",
+                "110"
+            ),
+            (
+                "altura",
+                "(C) Distancia entre pisos",
+                "108"
+            ),
+            (
+                "espesor_piso",
+                "(D) Espesor del piso",
+                "10"
+            ),
+            (
+                "espesor_huella",
+                "(E) Espesor de la huella",
+                "1.125"
+            ),
+            (
+                "acabado_superior",
+                "Acabado del piso superior",
+                "0"
+            ),
+            (
+                "acabado_inferior",
+                "Acabado del piso inferior",
+                "0"
+            )
+        ]
+
+        for fila, (clave, etiqueta, valor) in enumerate(campos):
+            ttk.Label(
+                panel_izquierdo,
+                text=f"{etiqueta}:"
+            ).grid(
+                row=fila,
+                column=0,
+                sticky="w",
+                pady=7
+            )
+
+            entrada = ttk.Entry(panel_izquierdo, width=14)
+            entrada.insert(0, valor)
+            entrada.grid(
+                row=fila,
+                column=1,
+                padx=10,
+                pady=7
+            )
+
+            ttk.Label(
+                panel_izquierdo,
+                text="pulg."
+            ).grid(
+                row=fila,
+                column=2,
+                sticky="w"
+            )
+
+            self.entradas[clave] = entrada
+
+        ttk.Label(
+            panel_izquierdo,
+            text="Altura máxima deseada de contrahuella:"
+        ).grid(
+            row=len(campos),
+            column=0,
+            sticky="w",
+            pady=(20, 7)
+        )
+
+        self.altura_maxima = ttk.Entry(panel_izquierdo, width=14)
+        self.altura_maxima.insert(0, "7.75")
+        self.altura_maxima.grid(
+            row=len(campos),
+            column=1,
+            padx=10,
+            pady=(20, 7)
+        )
+
+        ttk.Label(
+            panel_izquierdo,
+            text="pulg."
+        ).grid(
+            row=len(campos),
+            column=2,
+            sticky="w",
+            pady=(20, 7)
+        )
+
+        botones = ttk.Frame(panel_izquierdo)
+        botones.grid(
+            row=len(campos) + 1,
+            column=0,
+            columnspan=3,
+            pady=30
+        )
+
+        ttk.Button(
+            botones,
+            text="Calcular",
+            command=self.calcular
+        ).pack(side="left", padx=5)
+
+        ttk.Button(
+            botones,
+            text="Borrar",
+            command=self.borrar
+        ).pack(side="left", padx=5)
+
+        ttk.Button(
+            botones,
+            text="Salir",
+            command=self.destroy
+        ).pack(side="left", padx=5)
+
+        nombres_resultados = [
+            ("altura_total", "Altura total"),
+            ("altura_contrahuella", "Altura de la contrahuella"),
+            ("altura_inferior", "Altura de la contrahuella inferior"),
+            ("ancho_huella", "Ancho de la huella"),
+            ("longitud_limon", "Longitud del limon"),
+            ("relacion", "Relación altura/longitud"),
+            ("angulo", "Ángulo de inclinación"),
+            ("huellas", "Número de huellas"),
+            ("contrahuellas", "Número de contrahuellas")
+        ]
+
+        for fila, (clave, etiqueta) in enumerate(nombres_resultados):
+            variable = tk.StringVar(value="-")
+            self.resultados[clave] = variable
+
+            ttk.Label(
+                panel_derecho,
+                text=f"{etiqueta}:",
+                font=("Segoe UI", 11)
+            ).grid(
+                row=fila,
+                column=0,
+                sticky="w",
+                padx=10,
+                pady=12
+            )
+
+            ttk.Label(
+                panel_derecho,
+                textvariable=variable,
+                font=("Segoe UI", 11, "bold")
+            ).grid(
+                row=fila,
+                column=1,
+                sticky="w",
+                padx=20,
+                pady=12
+            )
+
+        ttk.Separator(
+            panel_derecho,
+            orient="horizontal"
+        ).grid(
+            row=len(nombres_resultados),
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=25
+        )
+
+        ttk.Label(
+            panel_derecho,
+            text="SALAMANCA SOFTWARE",
+            font=("Segoe UI", 22, "bold")
+        ).grid(
+            row=len(nombres_resultados) + 1,
+            column=0,
+            columnspan=2,
+            pady=(10, 5)
+        )
+
+        ttk.Label(
+            panel_derecho,
+            text="www.salamancasoftwaresolutions.com",
+            font=("Segoe UI", 10)
+        ).grid(
+            row=len(nombres_resultados) + 2,
+            column=0,
+            columnspan=2
+        )
+
+        panel_derecho.columnconfigure(0, weight=1)
+        panel_derecho.columnconfigure(1, weight=1)
+
+    @staticmethod
+    def convertir_decimal(valor: str, nombre: str) -> Decimal:
+        texto = valor.strip().replace(",", ".")
+
+        try:
+            numero = Decimal(texto)
+        except InvalidOperation as error:
+            raise ValueError(
+                f"El valor de «{nombre}» no es válido."
+            ) from error
+
+        if numero < 0:
+            raise ValueError(
+                f"El valor de «{nombre}» no puede ser negativo."
+            )
+
+        return numero
+
+    @staticmethod
+    def redondear(valor: Decimal, decimales: int = 2) -> str:
+        patron = Decimal("1").scaleb(-decimales)
+
+        return str(
+            valor.quantize(
+                patron,
+                rounding=ROUND_HALF_UP
+            )
+        )
+
+    def calcular(self) -> None:
+        try:
+            abertura = self.convertir_decimal(
+                self.entradas["abertura"].get(),
+                "longitud de la abertura"
+            )
+
+            horizontal = self.convertir_decimal(
+                self.entradas["horizontal"].get(),
+                "longitud horizontal"
+            )
+
+            altura_pisos = self.convertir_decimal(
+                self.entradas["altura"].get(),
+                "distancia entre pisos"
+            )
+
+            espesor_piso = self.convertir_decimal(
+                self.entradas["espesor_piso"].get(),
+                "espesor del piso"
+            )
+
+            espesor_huella = self.convertir_decimal(
+                self.entradas["espesor_huella"].get(),
+                "espesor de la huella"
+            )
+
+            acabado_superior = self.convertir_decimal(
+                self.entradas["acabado_superior"].get(),
+                "acabado superior"
+            )
+
+            acabado_inferior = self.convertir_decimal(
+                self.entradas["acabado_inferior"].get(),
+                "acabado inferior"
+            )
+
+            altura_maxima = self.convertir_decimal(
+                self.altura_maxima.get(),
+                "altura máxima de contrahuella"
+            )
+
+            if horizontal <= 0:
+                raise ValueError(
+                    "La longitud horizontal debe ser mayor que cero."
+                )
+
+            if altura_pisos <= 0:
+                raise ValueError(
+                    "La distancia entre pisos debe ser mayor que cero."
+                )
+
+            if altura_maxima <= 0:
+                raise ValueError(
+                    "La altura máxima debe ser mayor que cero."
+                )
+
+            # Altura terminada entre los pisos.
+            altura_total = (
+                altura_pisos
+                + acabado_superior
+                - acabado_inferior
+            )
+
+            # Cantidad mínima de contrahuellas para no superar
+            # la altura máxima seleccionada.
+            numero_contrahuellas = math.ceil(
+                float(altura_total / altura_maxima)
+            )
+
+            if numero_contrahuellas < 2:
+                raise ValueError(
+                    "La escalera debe tener al menos dos contrahuellas."
+                )
+
+            # Normalmente existe una huella menos que contrahuellas.
+            numero_huellas = numero_contrahuellas - 1
+
+            altura_contrahuella = (
+                altura_total / Decimal(numero_contrahuellas)
+            )
+
+            ancho_huella = (
+                horizontal / Decimal(numero_huellas)
+            )
+
+            # Ajuste básico para la primera contrahuella.
+            altura_inferior = (
+                altura_contrahuella
+                - espesor_huella
+                + acabado_inferior
+            )
+
+            longitud_limon = Decimal(
+                str(
+                    math.hypot(
+                        float(horizontal),
+                        float(altura_total)
+                    )
+                )
+            )
+
+            angulo = Decimal(
+                str(
+                    math.degrees(
+                        math.atan2(
+                            float(altura_total),
+                            float(horizontal)
+                        )
+                    )
+                )
+            )
+
+            relacion = altura_total / horizontal
+
+            # Control de abertura aproximado.
+            advertencia = ""
+
+            if abertura < horizontal:
+                advertencia = (
+                    "\n\nAdvertencia: la longitud horizontal supera "
+                    "la longitud de la abertura indicada."
+                )
+
+            if espesor_piso >= altura_total:
+                raise ValueError(
+                    "El espesor del piso no puede ser igual o mayor "
+                    "que la altura total."
+                )
+
+            self.resultados["altura_total"].set(
+                f"{self.redondear(altura_total)} pulg."
+            )
+
+            self.resultados["altura_contrahuella"].set(
+                f"{self.redondear(altura_contrahuella, 3)} pulg."
+            )
+
+            self.resultados["altura_inferior"].set(
+                f"{self.redondear(altura_inferior, 3)} pulg."
+            )
+
+            self.resultados["ancho_huella"].set(
+                f"{self.redondear(ancho_huella, 3)} pulg."
+            )
+
+            self.resultados["longitud_limon"].set(
+                f"{self.redondear(longitud_limon)} pulg."
+            )
+
+            self.resultados["relacion"].set(
+                self.redondear(relacion, 3)
+            )
+
+            self.resultados["angulo"].set(
+                f"{self.redondear(angulo)}°"
+            )
+
+            self.resultados["huellas"].set(
+                str(numero_huellas)
+            )
+
+            self.resultados["contrahuellas"].set(
+                str(numero_contrahuellas)
+            )
+
+            if advertencia:
+                messagebox.showwarning(
+                    "Cálculo completado",
+                    f"El cálculo fue realizado.{advertencia}"
+                )
+
+        except ValueError as error:
+            messagebox.showerror(
+                "Datos incorrectos",
+                str(error)
+            )
+
+    def borrar(self) -> None:
+        for entrada in self.entradas.values():
+            entrada.delete(0, tk.END)
+
+        self.altura_maxima.delete(0, tk.END)
+        self.altura_maxima.insert(0, "7.75")
+
+        for variable in self.resultados.values():
+            variable.set("-")
+
+        self.entradas["abertura"].focus_set()
+
+
+if __name__ == "__main__":
+    aplicacion = CalculadorEscalera()
+    aplicacion.mainloop()
