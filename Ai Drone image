@@ -1,1 +1,57 @@
 
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+BACKEND = ROOT / "backend"
+FRONTEND = ROOT / "frontend"
+CODEX_NODE = Path.home() / ".cache" / "codex-runtimes" / "codex-primary-runtime" / "dependencies" / "node" / "bin" / "node.exe"
+
+
+def _backend_python():
+    candidates = [
+        BACKEND / ".venv" / "Scripts" / "python.exe",
+        BACKEND / ".venv" / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return sys.executable
+
+
+def _node():
+    if CODEX_NODE.exists():
+        return str(CODEX_NODE)
+    path_node = shutil.which("node")
+    if path_node:
+        return path_node
+    raise RuntimeError("Node.js was not found. Install Node.js or run from the bundled Codex workspace.")
+
+
+def _run(label, command, cwd):
+    print(f"\n== {label} ==")
+    completed = subprocess.run(command, cwd=cwd, text=True)
+    if completed.returncode != 0:
+        raise SystemExit(completed.returncode)
+
+
+def main():
+    _run(
+        "Backend unit tests",
+        [_backend_python(), "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+        BACKEND,
+    )
+    _run(
+        "Frontend tests",
+        [_node(), "--test", "tests/source.test.mjs"],
+        FRONTEND,
+    )
+    print("\nAll tests passed.")
+
+
+if __name__ == "__main__":
+    main()
