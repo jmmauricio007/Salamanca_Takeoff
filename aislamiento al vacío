@@ -1,1 +1,504 @@
 
+"""
+Módulo: Calculador de aislamiento a granel
+Empresa: Salamanca Software
+
+Requisitos:
+    Python 3.10 o superior
+
+Ejecución:
+    python calculador_aislamiento.py
+"""
+
+import math
+import tkinter as tk
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from tkinter import messagebox, ttk
+
+
+class CalculadorAislamiento(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.title(
+            "Calculador de aislamiento a granel - Salamanca Software"
+        )
+        self.geometry("1150x580")
+        self.minsize(1000, 520)
+
+        self.factor_r = tk.StringVar(value="R-10")
+        self.superficie = tk.StringVar()
+
+        self.resultados_celulosa: dict[str, tk.StringVar] = {}
+        self.resultados_lana: dict[str, tk.StringVar] = {}
+
+        self.crear_interfaz()
+
+    def crear_interfaz(self) -> None:
+        contenedor = ttk.Frame(self, padding=20)
+        contenedor.pack(fill="both", expand=True)
+
+        panel_entrada = ttk.LabelFrame(
+            contenedor,
+            text="Datos del proyecto",
+            padding=20
+        )
+        panel_entrada.grid(
+            row=0,
+            column=0,
+            sticky="nsew",
+            padx=(0, 12)
+        )
+
+        panel_celulosa = ttk.LabelFrame(
+            contenedor,
+            text="Celulosa",
+            padding=20
+        )
+        panel_celulosa.grid(
+            row=0,
+            column=1,
+            sticky="nsew",
+            padx=12
+        )
+
+        panel_lana = ttk.LabelFrame(
+            contenedor,
+            text="Lana para soplar",
+            padding=20
+        )
+        panel_lana.grid(
+            row=0,
+            column=2,
+            sticky="nsew",
+            padx=(12, 0)
+        )
+
+        contenedor.columnconfigure(0, weight=1)
+        contenedor.columnconfigure(1, weight=2)
+        contenedor.columnconfigure(2, weight=2)
+        contenedor.rowconfigure(0, weight=1)
+
+        self.crear_panel_entrada(panel_entrada)
+        self.crear_panel_celulosa(panel_celulosa)
+        self.crear_panel_lana(panel_lana)
+        self.crear_pie_pagina(contenedor)
+
+    def crear_panel_entrada(self, panel: ttk.LabelFrame) -> None:
+        ttk.Label(
+            panel,
+            text="Factor R deseado:",
+            font=("Segoe UI", 11, "bold")
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(0, 8)
+        )
+
+        factores = [
+            "R-10",
+            "R-12",
+            "R-20",
+            "R-24",
+            "R-30",
+            "R-40",
+            "R-50",
+            "R-60"
+        ]
+
+        selector = ttk.Combobox(
+            panel,
+            textvariable=self.factor_r,
+            values=factores,
+            state="readonly",
+            width=12
+        )
+        selector.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(0, 24)
+        )
+
+        ttk.Label(
+            panel,
+            text="Superficie a cubrir:",
+            font=("Segoe UI", 11, "bold")
+        ).grid(
+            row=2,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(0, 8)
+        )
+
+        ttk.Entry(
+            panel,
+            textvariable=self.superficie,
+            width=14
+        ).grid(
+            row=3,
+            column=0,
+            sticky="ew"
+        )
+
+        ttk.Label(
+            panel,
+            text="pie²"
+        ).grid(
+            row=3,
+            column=1,
+            sticky="w",
+            padx=(8, 0)
+        )
+
+        botones = ttk.Frame(panel)
+        botones.grid(
+            row=4,
+            column=0,
+            columnspan=2,
+            pady=(35, 0)
+        )
+
+        ttk.Button(
+            botones,
+            text="Calcular",
+            command=self.calcular
+        ).pack(
+            side="left",
+            padx=4
+        )
+
+        ttk.Button(
+            botones,
+            text="Borrar",
+            command=self.borrar
+        ).pack(
+            side="left",
+            padx=4
+        )
+
+        ttk.Button(
+            botones,
+            text="Salir",
+            command=self.destroy
+        ).pack(
+            side="left",
+            padx=4
+        )
+
+        panel.columnconfigure(0, weight=1)
+
+    def crear_panel_celulosa(
+        self,
+        panel: ttk.LabelFrame
+    ) -> None:
+        campos = [
+            (
+                "libras",
+                "Libras de celulosa necesarias"
+            ),
+            (
+                "espesor_aplicacion",
+                "Espesor de aplicación"
+            ),
+            (
+                "espesor_asentado",
+                "Espesor asentado"
+            ),
+            (
+                "sacos",
+                "Número de sacos de 25 lb"
+            )
+        ]
+
+        for fila, (clave, etiqueta) in enumerate(campos):
+            variable = tk.StringVar(value="-")
+            self.resultados_celulosa[clave] = variable
+
+            ttk.Label(
+                panel,
+                text=f"{etiqueta}:"
+            ).grid(
+                row=fila,
+                column=0,
+                sticky="w",
+                pady=14
+            )
+
+            ttk.Label(
+                panel,
+                textvariable=variable,
+                font=("Segoe UI", 10, "bold")
+            ).grid(
+                row=fila,
+                column=1,
+                sticky="e",
+                padx=(20, 0),
+                pady=14
+            )
+
+        panel.columnconfigure(0, weight=1)
+        panel.columnconfigure(1, weight=1)
+
+    def crear_panel_lana(
+        self,
+        panel: ttk.LabelFrame
+    ) -> None:
+        campos = [
+            (
+                "libras",
+                "Libras de lana necesarias"
+            ),
+            (
+                "espesor_aplicacion",
+                "Espesor de aplicación"
+            ),
+            (
+                "sacos",
+                "Número de sacos de 37.5 lb"
+            )
+        ]
+
+        for fila, (clave, etiqueta) in enumerate(campos):
+            variable = tk.StringVar(value="-")
+            self.resultados_lana[clave] = variable
+
+            ttk.Label(
+                panel,
+                text=f"{etiqueta}:"
+            ).grid(
+                row=fila,
+                column=0,
+                sticky="w",
+                pady=18
+            )
+
+            ttk.Label(
+                panel,
+                textvariable=variable,
+                font=("Segoe UI", 10, "bold")
+            ).grid(
+                row=fila,
+                column=1,
+                sticky="e",
+                padx=(20, 0),
+                pady=18
+            )
+
+        panel.columnconfigure(0, weight=1)
+        panel.columnconfigure(1, weight=1)
+
+    def crear_pie_pagina(
+        self,
+        contenedor: ttk.Frame
+    ) -> None:
+        pie = ttk.Frame(contenedor)
+        pie.grid(
+            row=1,
+            column=0,
+            columnspan=3,
+            sticky="ew",
+            pady=(25, 0)
+        )
+
+        ttk.Separator(
+            pie,
+            orient="horizontal"
+        ).pack(fill="x", pady=(0, 15))
+
+        ttk.Label(
+            pie,
+            text="SALAMANCA SOFTWARE",
+            font=("Segoe UI", 20, "bold")
+        ).pack()
+
+        ttk.Label(
+            pie,
+            text="Soluciones de software para estimación"
+        ).pack(pady=(3, 0))
+
+        ttk.Label(
+            pie,
+            text="www.salamancasoftwaresolutions.com"
+        ).pack(pady=(3, 0))
+
+    @staticmethod
+    def convertir_decimal(
+        valor: str,
+        nombre: str
+    ) -> Decimal:
+        texto = valor.strip().replace(",", ".")
+
+        try:
+            numero = Decimal(texto)
+        except InvalidOperation as error:
+            raise ValueError(
+                f"El valor de «{nombre}» no es válido."
+            ) from error
+
+        if numero <= 0:
+            raise ValueError(
+                f"El valor de «{nombre}» debe ser mayor que cero."
+            )
+
+        return numero
+
+    @staticmethod
+    def redondear(
+        valor: Decimal,
+        decimales: int = 2
+    ) -> str:
+        patron = Decimal("1").scaleb(-decimales)
+
+        return str(
+            valor.quantize(
+                patron,
+                rounding=ROUND_HALF_UP
+            )
+        )
+
+    @staticmethod
+    def extraer_factor_r(valor: str) -> Decimal:
+        try:
+            return Decimal(
+                valor.upper().replace("R-", "").strip()
+            )
+        except InvalidOperation as error:
+            raise ValueError(
+                "El factor R seleccionado no es válido."
+            ) from error
+
+    def calcular(self) -> None:
+        try:
+            superficie = self.convertir_decimal(
+                self.superficie.get(),
+                "superficie"
+            )
+
+            factor_r = self.extraer_factor_r(
+                self.factor_r.get()
+            )
+
+            # -------------------------------------------------
+            # DATOS DE EJEMPLO PARA CELULOSA
+            # -------------------------------------------------
+            # Valor R aproximado por pulgada.
+            r_por_pulgada_celulosa = Decimal("3.7")
+
+            # Densidad instalada aproximada en lb/pie³.
+            densidad_celulosa = Decimal("1.6")
+
+            # Aumento de espesor antes del asentamiento.
+            factor_asentamiento = Decimal("1.15")
+
+            espesor_asentado_celulosa = (
+                factor_r / r_por_pulgada_celulosa
+            )
+
+            espesor_aplicacion_celulosa = (
+                espesor_asentado_celulosa
+                * factor_asentamiento
+            )
+
+            volumen_celulosa = (
+                superficie
+                * espesor_aplicacion_celulosa
+                / Decimal("12")
+            )
+
+            libras_celulosa = (
+                volumen_celulosa
+                * densidad_celulosa
+            )
+
+            sacos_celulosa = math.ceil(
+                float(
+                    libras_celulosa / Decimal("25")
+                )
+            )
+
+            # -------------------------------------------------
+            # DATOS DE EJEMPLO PARA LANA SOPLADA
+            # -------------------------------------------------
+            r_por_pulgada_lana = Decimal("3.1")
+            densidad_lana = Decimal("0.9")
+
+            espesor_aplicacion_lana = (
+                factor_r / r_por_pulgada_lana
+            )
+
+            volumen_lana = (
+                superficie
+                * espesor_aplicacion_lana
+                / Decimal("12")
+            )
+
+            libras_lana = (
+                volumen_lana
+                * densidad_lana
+            )
+
+            sacos_lana = math.ceil(
+                float(
+                    libras_lana / Decimal("37.5")
+                )
+            )
+
+            self.resultados_celulosa["libras"].set(
+                f"{self.redondear(libras_celulosa)} lb"
+            )
+
+            self.resultados_celulosa[
+                "espesor_aplicacion"
+            ].set(
+                f"{self.redondear(espesor_aplicacion_celulosa)} pulg."
+            )
+
+            self.resultados_celulosa[
+                "espesor_asentado"
+            ].set(
+                f"{self.redondear(espesor_asentado_celulosa)} pulg."
+            )
+
+            self.resultados_celulosa["sacos"].set(
+                str(sacos_celulosa)
+            )
+
+            self.resultados_lana["libras"].set(
+                f"{self.redondear(libras_lana)} lb"
+            )
+
+            self.resultados_lana[
+                "espesor_aplicacion"
+            ].set(
+                f"{self.redondear(espesor_aplicacion_lana)} pulg."
+            )
+
+            self.resultados_lana["sacos"].set(
+                str(sacos_lana)
+            )
+
+        except ValueError as error:
+            messagebox.showerror(
+                "Datos incorrectos",
+                str(error)
+            )
+
+    def borrar(self) -> None:
+        self.superficie.set("")
+        self.factor_r.set("R-10")
+
+        for variable in self.resultados_celulosa.values():
+            variable.set("-")
+
+        for variable in self.resultados_lana.values():
+            variable.set("-")
+
+
+if __name__ == "__main__":
+    aplicacion = CalculadorAislamiento()
+    aplicacion.mainloop()
